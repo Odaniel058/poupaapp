@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Poupa">
+<meta name="theme-color" content="#c9a84c">
+<title>PoupaApp</title>
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<style>
+:root {
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --card: #15151e;
+  --card2: #1a1a25;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --gold: #c9a84c;
+  --gold-dim: rgba(201,168,76,0.12);
+  --gold-glow: rgba(201,168,76,0.35);
+  --text: #e8e8f0;
+  --muted: #5a5a72;
+  --muted2: #8888a0;
+  --green: #4ecb7d;
+  --green-dim: rgba(78,203,125,0.1);
+  --red: #e05555;
+  --red-dim: rgba(224,85,85,0.1);
+  --safe: env(safe-area-inset-bottom, 0px);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+}
+
+/* ── LAYOUT ── */
+#app { display: flex; flex-direction: column; height: 100%; }
+
+.screen {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+.screen.active { display: flex; }
+
+/* ── AUTH ── */
+#auth-screen {
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+  background: var(--bg);
+  position: relative;
+}
+
+#auth-screen::before {
+  content: '';
+  position: absolute;
+  top: -100px; left: 50%;
+  transform: translateX(-50%);
+  width: 400px; height: 400px;
+  background: radial-gradient(circle, rgba(201,168,76,0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.auth-logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.auth-logo span { color: var(--gold); }
+
+.auth-tagline {
+  color: var(--muted2);
+  font-size: 14px;
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.auth-box {
+  width: 100%;
+  max-width: 360px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px 24px;
+}
+
+.auth-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 8px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted2);
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.auth-tab.active {
+  background: var(--gold);
+  color: #0a0a0f;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+.field label {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted2);
+  margin-bottom: 6px;
+}
+.field input {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.field input:focus { border-color: var(--gold); }
+
+.btn {
+  width: 100%;
+  padding: 13px;
+  border-radius: 8px;
+  border: none;
+  background: var(--gold);
+  color: #0a0a0f;
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  letter-spacing: 0.04em;
+}
+.btn:active { transform: scale(0.98); opacity: 0.85; }
+.btn.secondary {
+  background: var(--card2);
+  color: var(--text);
+  border: 1px solid var(--border2);
+}
+.btn.danger {
+  background: var(--red-dim);
+  color: var(--red);
+  border: 1px solid rgba(224,85,85,0.2);
+}
+.btn.sm {
+  padding: 8px 14px;
+  font-size: 12px;
+  width: auto;
+}
+
+.auth-err {
+  color: var(--red);
+  font-size: 12px;
+  text-align: center;
+  margin-top: 10px;
+  min-height: 16px;
+}
+
+/* ── MAIN HEADER ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  flex-shrink: 0;
+}
+
+.topbar-logo {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.topbar-logo span { color: var(--gold); }
+
+.topbar-right { display: flex; gap: 10px; align-items: center; }
+
+.icon-btn {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: background 0.15s;
+}
+.icon-btn:active { background: var(--card2); }
+
+/* ── SCROLL CONTENT ── */
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 16px 100px;
+}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  display: flex;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  padding-bottom: max(16px, var(--safe));
+  flex-shrink: 0;
+}
+
+.nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 10px 0 6px;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  transition: color 0.2s;
+}
+.nav-item.active { color: var(--gold); }
+.nav-icon { font-size: 22px; }
+.nav-label { font-size: 10px; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; }
+
+/* ── CARDS ── */
+.summary-strip {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding-top: 4px;
+}
+
+.sum-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+.sum-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted2);
+  margin-bottom: 4px;
+}
+.sum-value {
+  font-family: 'Syne', sans-serif;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.sum-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+/* ── GOALS LIST ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.section-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted2);
+}
+
+.goal-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.goal-card:active { transform: scale(0.99); }
+.goal-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+  background: var(--goal-color, var(--gold));
+  border-radius: 14px 14px 0 0;
+}
+
+.goal-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.goal-left { display: flex; align-items: center; gap: 10px; }
+.goal-emoji { font-size: 26px; }
+.goal-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+}
+.goal-deadline { font-size: 11px; color: var(--muted2); margin-top: 1px; }
+
+.goal-amounts { text-align: right; }
+.goal-current {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--goal-color, var(--gold));
+}
+.goal-target { font-size: 11px; color: var(--muted2); }
+
+.bar-bg {
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--goal-color, var(--gold));
+  transition: width 0.8s cubic-bezier(0.4,0,0.2,1);
+}
+.goal-pct {
+  font-size: 11px;
+  color: var(--muted2);
+  text-align: right;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--muted);
+}
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-text { font-size: 14px; line-height: 1.5; }
+
+/* ── MODAL ── */
+.overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(4px);
+  z-index: 100;
+  align-items: flex-end;
+  justify-content: center;
+}
+.overlay.open { display: flex; animation: fadeIn 0.2s ease; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px 20px 0 0;
+  width: 100%;
+  max-width: 480px;
+  padding: 24px 20px;
+  padding-bottom: max(24px, var(--safe));
+  max-height: 92vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s cubic-bezier(0.4,0,0.2,1);
+}
+.modal.center {
+  border-radius: 20px;
+  margin: 20px;
+  width: calc(100% - 40px);
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-handle {
+  width: 36px; height: 4px;
+  background: var(--border2);
+  border-radius: 2px;
+  margin: 0 auto 20px;
+}
+.modal-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 20px;
+}
+
+/* Emoji picker */
+.emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.emoji-opt {
+  aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.15s, background 0.15s;
+}
+.emoji-opt:hover { background: var(--card2); }
+.emoji-opt.selected { border-color: var(--gold); background: var(--gold-dim); }
+
+/* Color picker */
+.color-grid {
+  display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.color-opt {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 3px solid transparent;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.color-opt.selected { border-color: white; transform: scale(1.1); }
+
+/* ── GOAL DETAIL ── */
+#detail-screen .scroll-content { padding-top: 8px; }
+
+.detail-hero {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+  text-align: center;
+  position: relative;
+}
+.detail-emoji { font-size: 52px; margin-bottom: 8px; }
+.detail-name {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  margin-bottom: 4px;
+}
+.detail-amounts {
+  font-size: 13px;
+  color: var(--muted2);
+  margin-bottom: 16px;
+}
+.detail-amounts strong {
+  font-family: 'Syne', sans-serif;
+  font-size: 28px;
+  font-weight: 800;
+  display: block;
+  color: var(--text);
+}
+
+.detail-bar-bg {
+  height: 10px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.detail-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 1s cubic-bezier(0.4,0,0.2,1);
+  box-shadow: 0 0 12px var(--goal-glow, var(--gold-glow));
+}
+.detail-pct-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted2);
+}
+
+.stat-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.stat-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  text-align: center;
+}
+.stat-label { font-size: 10px; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px; }
+.stat-val { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; }
+
+/* Deposits list */
+.deposit-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 8px;
+}
+.dep-left { display: flex; align-items: center; gap: 10px; }
+.dep-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  flex-shrink: 0;
+}
+.dep-info {}
+.dep-note { font-size: 13px; font-weight: 500; }
+.dep-date { font-size: 11px; color: var(--muted2); }
+.dep-amount {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--green);
+}
+
+/* Chart */
+.chart-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.chart-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted2);
+  margin-bottom: 12px;
+}
+
+/* Simulator tab */
+.sim-wrap {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.sim-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+.sim-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+.sim-label { font-size: 13px; color: var(--muted2); }
+.sim-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--gold);
+  min-width: 90px;
+  text-align: right;
+}
+.sim-slider {
+  width: 100%;
+  accent-color: var(--gold);
+  margin-top: 6px;
+  cursor: pointer;
+}
+.sim-result {
+  background: var(--gold-dim);
+  border: 1px solid rgba(201,168,76,0.2);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  margin-top: 16px;
+}
+.sim-result-label { font-size: 12px; color: var(--muted2); margin-bottom: 4px; }
+.sim-result-val {
+  font-family: 'Syne', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--gold);
+}
+
+/* Tabs */
+.tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--card);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+.tab-btn {
+  flex: 1;
+  padding: 8px 6px;
+  border-radius: 7px;
+  border: none;
+  background: transparent;
+  color: var(--muted2);
+  font-family: 'Syne', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.05em;
+}
+.tab-btn.active { background: var(--card2); color: var(--text); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Loading */
+.loading {
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px;
+  color: var(--muted2);
+  font-size: 13px;
+  gap: 10px;
+}
+.spinner {
+  width: 18px; height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.toast {
+  position: fixed;
+  bottom: 90px; left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 200;
+  opacity: 0;
+  transition: all 0.3s;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ══ AUTH ══ -->
+  <div class="screen active" id="auth-screen">
+    <div class="auth-logo">Poupa<span>.</span></div>
+    <p class="auth-tagline">Suas metas, seu ritmo.</p>
+    <div class="auth-box">
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')">Entrar</button>
+        <button class="auth-tab" onclick="switchAuthTab('register')">Criar conta</button>
+      </div>
+      <div id="login-form">
+        <div class="field"><label>E-mail</label><input type="email" id="login-email" placeholder="seu@email.com"></div>
+        <div class="field"><label>Senha</label><input type="password" id="login-pass" placeholder="••••••••"></div>
+        <button class="btn" onclick="doLogin()">Entrar</button>
+      </div>
+      <div id="register-form" style="display:none">
+        <div class="field"><label>E-mail</label><input type="email" id="reg-email" placeholder="seu@email.com"></div>
+        <div class="field"><label>Senha</label><input type="password" id="reg-pass" placeholder="mínimo 6 caracteres"></div>
+        <button class="btn" onclick="doRegister()">Criar conta</button>
+      </div>
+      <div class="auth-err" id="auth-err"></div>
+    </div>
+  </div>
+
+  <!-- ══ MAIN ══ -->
+  <div class="screen" id="main-screen">
+    <div class="topbar">
+      <div class="topbar-logo">Poupa<span>.</span></div>
+      <div class="topbar-right">
+        <div class="icon-btn" onclick="openNewGoal()" title="Nova meta">＋</div>
+        <div class="icon-btn" onclick="doLogout()" title="Sair">⎋</div>
+      </div>
+    </div>
+
+    <div class="scroll-content">
+      <!-- Resumo -->
+      <div class="summary-strip" id="summary-strip">
+        <div class="sum-card">
+          <div class="sum-label">Total guardado</div>
+          <div class="sum-value" id="sum-total">R$ 0</div>
+          <div class="sum-sub" id="sum-goals">0 metas</div>
+        </div>
+        <div class="sum-card">
+          <div class="sum-label">Falta para metas</div>
+          <div class="sum-value" id="sum-remaining" style="color: var(--muted2)">R$ 0</div>
+          <div class="sum-sub" id="sum-pct">0% concluído</div>
+        </div>
+      </div>
+
+      <!-- Metas -->
+      <div class="section-header">
+        <span class="section-title">Minhas Metas</span>
+      </div>
+      <div id="goals-list">
+        <div class="loading"><div class="spinner"></div> Carregando...</div>
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="showMainTab(this,'home')">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Início</span>
+      </button>
+      <button class="nav-item" onclick="showMainTab(this,'sim')">
+        <span class="nav-icon">🧮</span>
+        <span class="nav-label">Simular</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ══ DETAIL ══ -->
+  <div class="screen" id="detail-screen">
+    <div class="topbar">
+      <div class="icon-btn" onclick="goBack()">←</div>
+      <div class="topbar-logo" id="detail-topbar-name" style="font-size:16px">Meta</div>
+      <div class="topbar-right">
+        <div class="icon-btn" onclick="openDeposit()">＋</div>
+        <div class="icon-btn" onclick="openEditGoal()">✎</div>
+      </div>
+    </div>
+
+    <div class="tabs" style="margin: 0 16px 0; flex-shrink: 0;">
+      <button class="tab-btn active" onclick="switchTab(this,'overview')">Visão Geral</button>
+      <button class="tab-btn" onclick="switchTab(this,'history')">Histórico</button>
+      <button class="tab-btn" onclick="switchTab(this,'simulate')">Simular</button>
+    </div>
+
+    <div class="scroll-content">
+
+      <!-- Overview tab -->
+      <div class="tab-content active" id="tab-overview">
+        <div class="detail-hero" id="detail-hero">
+          <div class="detail-emoji" id="d-emoji">🎯</div>
+          <div class="detail-name" id="d-name">Meta</div>
+          <div class="detail-amounts">
+            <strong id="d-current">R$ 0</strong>
+            de <span id="d-target">R$ 0</span>
+          </div>
+          <div class="detail-bar-bg">
+            <div class="detail-bar-fill" id="d-bar" style="width:0%"></div>
+          </div>
+          <div class="detail-pct-row">
+            <span id="d-pct">0%</span>
+            <span id="d-remaining-label">falta R$ 0</span>
+          </div>
+        </div>
+
+        <div class="stat-row" id="stat-row">
+          <div class="stat-box">
+            <div class="stat-label">Depósitos</div>
+            <div class="stat-val" id="stat-count">0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Média/mês</div>
+            <div class="stat-val" id="stat-avg">R$ 0</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-label">Prazo</div>
+            <div class="stat-val" id="stat-deadline">—</div>
+          </div>
+        </div>
+
+        <div class="chart-wrap">
+          <div class="chart-title">Evolução do saldo</div>
+          <canvas id="chart-main" height="160"></canvas>
+        </div>
+
+        <button class="btn danger" style="margin-top:8px" onclick="confirmDeleteGoal()">Excluir esta meta</button>
+      </div>
+
+      <!-- History tab -->
+      <div class="tab-content" id="tab-history">
+        <div class="section-header">
+          <span class="section-title">Depósitos</span>
+          <button class="btn sm" onclick="openDeposit()">＋ Novo</button>
+        </div>
+        <div id="deposits-list">
+          <div class="loading"><div class="spinner"></div></div>
+        </div>
+      </div>
+
+      <!-- Simulate tab -->
+      <div class="tab-content" id="tab-simulate">
+        <div class="sim-wrap">
+          <div class="sim-title">🧮 Simulador de prazo</div>
+          <div class="sim-row">
+            <div class="sim-label">Depósito mensal</div>
+            <div class="sim-val" id="sim-val-monthly">R$ 500</div>
+          </div>
+          <input class="sim-slider" type="range" id="sim-monthly" min="50" max="3000" step="50" value="500" oninput="updateSim()">
+
+          <div class="sim-row" style="margin-top:14px">
+            <div class="sim-label">Já guardado</div>
+            <div class="sim-val" id="sim-val-saved">R$ 0</div>
+          </div>
+
+          <div class="sim-result">
+            <div class="sim-result-label">Tempo estimado para completar</div>
+            <div class="sim-result-val" id="sim-result">— meses</div>
+            <div style="font-size:11px; color:var(--muted2); margin-top:4px" id="sim-date"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ MODALS ══ -->
+
+<!-- Nova / editar meta -->
+<div class="overlay" id="modal-goal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title" id="modal-goal-title">Nova Meta</div>
+
+    <div class="field">
+      <label>Nome da meta</label>
+      <input type="text" id="goal-name" placeholder="Ex: Meu Jetta">
+    </div>
+
+    <div class="field">
+      <label>Emoji</label>
+      <div class="emoji-grid" id="emoji-grid"></div>
+    </div>
+
+    <div class="field">
+      <label>Cor</label>
+      <div class="color-grid" id="color-grid"></div>
+    </div>
+
+    <div class="field">
+      <label>Valor da meta (R$)</label>
+      <input type="number" id="goal-target" placeholder="80000">
+    </div>
+
+    <div class="field">
+      <label>Prazo (opcional)</label>
+      <input type="date" id="goal-deadline">
+    </div>
+
+    <button class="btn" style="margin-top:4px" onclick="saveGoal()">Salvar</button>
+    <button class="btn secondary" style="margin-top:8px" onclick="closeModal('modal-goal')">Cancelar</button>
+  </div>
+</div>
+
+<!-- Novo depósito -->
+<div class="overlay" id="modal-deposit">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Registrar Depósito</div>
+
+    <div class="field">
+      <label>Valor (R$)</label>
+      <input type="number" id="dep-amount" placeholder="100">
+    </div>
+    <div class="field">
+      <label>Descrição (opcional)</label>
+      <input type="text" id="dep-note" placeholder="Ex: Caixinha de dezembro">
+    </div>
+    <div class="field">
+      <label>Data</label>
+      <input type="date" id="dep-date">
+    </div>
+
+    <button class="btn" style="margin-top:4px" onclick="saveDeposit()">Registrar</button>
+    <button class="btn secondary" style="margin-top:8px" onclick="closeModal('modal-deposit')">Cancelar</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SUPABASE ──
+const SUPABASE_URL = 'https://omtihgeqgtkzrtyvwmam.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9tdGloZ2VxZ3RrenJ0eXZ3bWFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjA4NTYsImV4cCI6MjA4NjQzNjg1Nn0.qUp4RWPMgCbVbF_esVX921jGwG9lQDoy4jCnbiURQDQ';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── STATE ──
+let user = null;
+let goals = [];
+let currentGoal = null;
+let currentDeposits = [];
+let editingGoalId = null;
+let chartInstance = null;
+
+const EMOJIS = ['🚗','🏠','✈️','💻','🎓','💍','🎸','🌴','👟','📱','🏋️','🎮','🛵','⌚','💰','🎯','🏆','🌎','🐶','📷'];
+const COLORS = ['#c9a84c','#4ecb7d','#5b8af5','#e05555','#a855f7','#f97316','#06b6d4','#ec4899'];
+let selectedEmoji = '🎯';
+let selectedColor = '#c9a84c';
+
+// ── INIT ──
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    user = session.user;
+    showScreen('main-screen');
+    loadGoals();
+  }
+
+  sb.auth.onAuthStateChange((_event, session) => {
+    if (session) {
+      user = session.user;
+      showScreen('main-screen');
+      loadGoals();
+    } else {
+      user = null;
+      showScreen('auth-screen');
+    }
+  });
+
+  buildEmojiGrid();
+  buildColorGrid();
+
+  // PWA sw
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+
+  // default deposit date = today
+  document.getElementById('dep-date').value = new Date().toISOString().split('T')[0];
+}
+
+// ── SCREENS ──
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function goBack() {
+  showScreen('main-screen');
+  currentGoal = null;
+}
+
+// ── AUTH ──
+function switchAuthTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach((t,i) => {
+    t.classList.toggle('active', (i===0 && tab==='login') || (i===1 && tab==='register'));
+  });
+  document.getElementById('login-form').style.display = tab === 'login' ? '' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('auth-err').textContent = '';
+}
+
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pass  = document.getElementById('login-pass').value;
+  const { error } = await sb.auth.signInWithPassword({ email, password: pass });
+  if (error) document.getElementById('auth-err').textContent = 'E-mail ou senha incorretos.';
+}
+
+async function doRegister() {
+  const email = document.getElementById('reg-email').value.trim();
+  const pass  = document.getElementById('reg-pass').value;
+  if (pass.length < 6) { document.getElementById('auth-err').textContent = 'Senha mínimo 6 caracteres.'; return; }
+  const { error } = await sb.auth.signUp({ email, password: pass });
+  if (error) document.getElementById('auth-err').textContent = error.message;
+  else showToast('Conta criada! Verifique seu e-mail.');
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+}
+
+// ── GOALS ──
+async function loadGoals() {
+  const { data, error } = await sb.from('goals').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+  if (error) { console.error(error); return; }
+  goals = data || [];
+  renderGoals();
+  renderSummary();
+}
+
+function renderSummary() {
+  const total = goals.reduce((s, g) => s + parseFloat(g.current_amount || 0), 0);
+  const targetTotal = goals.reduce((s, g) => s + parseFloat(g.target_amount || 0), 0);
+  const remaining = Math.max(targetTotal - total, 0);
+  const pct = targetTotal > 0 ? Math.round((total / targetTotal) * 100) : 0;
+
+  document.getElementById('sum-total').textContent = fmt(total);
+  document.getElementById('sum-remaining').textContent = fmt(remaining);
+  document.getElementById('sum-goals').textContent = goals.length + ' meta' + (goals.length !== 1 ? 's' : '');
+  document.getElementById('sum-pct').textContent = pct + '% concluído';
+}
+
+function renderGoals() {
+  const el = document.getElementById('goals-list');
+  if (!goals.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">🎯</div><div class="empty-text">Nenhuma meta ainda.<br>Toca no + para criar a primeira!</div></div>`;
+    return;
+  }
+  el.innerHTML = goals.map(g => {
+    const cur = parseFloat(g.current_amount || 0);
+    const tgt = parseFloat(g.target_amount || 0);
+    const pct = tgt > 0 ? Math.min((cur/tgt)*100, 100) : 0;
+    const deadline = g.deadline ? new Date(g.deadline).toLocaleDateString('pt-BR', {month:'short', year:'numeric'}) : 'Sem prazo';
+    return `
+      <div class="goal-card" style="--goal-color:${g.color}" onclick="openGoalDetail('${g.id}')">
+        <div class="goal-top">
+          <div class="goal-left">
+            <span class="goal-emoji">${g.emoji}</span>
+            <div>
+              <div class="goal-name">${g.name}</div>
+              <div class="goal-deadline">${deadline}</div>
+            </div>
+          </div>
+          <div class="goal-amounts">
+            <div class="goal-current">${fmt(cur)}</div>
+            <div class="goal-target">de ${fmt(tgt)}</div>
+          </div>
+        </div>
+        <div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <div class="goal-pct">${Math.round(pct)}%</div>
+      </div>`;
+  }).join('');
+}
+
+// ── GOAL DETAIL ──
+async function openGoalDetail(id) {
+  currentGoal = goals.find(g => g.id === id);
+  if (!currentGoal) return;
+
+  // Set color CSS vars
+  document.getElementById('detail-screen').style.setProperty('--goal-color', currentGoal.color);
+  document.getElementById('detail-screen').style.setProperty('--goal-glow', currentGoal.color + '55');
+
+  document.getElementById('detail-topbar-name').textContent = currentGoal.name;
+  document.getElementById('d-emoji').textContent = currentGoal.emoji;
+  document.getElementById('d-name').textContent = currentGoal.name;
+
+  const cur = parseFloat(currentGoal.current_amount || 0);
+  const tgt = parseFloat(currentGoal.target_amount || 0);
+  const pct = tgt > 0 ? Math.min((cur/tgt)*100,100) : 0;
+  const remaining = Math.max(tgt - cur, 0);
+
+  document.getElementById('d-current').textContent = fmt(cur);
+  document.getElementById('d-target').textContent = fmt(tgt);
+  document.getElementById('d-bar').style.width = pct + '%';
+  document.getElementById('d-bar').style.background = currentGoal.color;
+  document.getElementById('d-pct').textContent = Math.round(pct) + '%';
+  document.getElementById('d-remaining-label').textContent = 'falta ' + fmt(remaining);
+
+  const dl = currentGoal.deadline ? new Date(currentGoal.deadline).toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+  document.getElementById('stat-deadline').textContent = dl;
+
+  // Switch to overview tab
+  switchTab(document.querySelector('.tab-btn'), 'overview');
+  showScreen('detail-screen');
+
+  await loadDeposits();
+  updateSim();
+}
+
+async function loadDeposits() {
+  const { data } = await sb.from('deposits')
+    .select('*')
+    .eq('goal_id', currentGoal.id)
+    .order('deposited_at', { ascending: true });
+
+  currentDeposits = data || [];
+  renderDeposits();
+  renderStats();
+  renderChart();
+}
+
+function renderDeposits() {
+  const el = document.getElementById('deposits-list');
+  if (!currentDeposits.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon">💸</div><div class="empty-text">Nenhum depósito ainda.</div></div>`;
+    return;
+  }
+  el.innerHTML = [...currentDeposits].reverse().map(d => `
+    <div class="deposit-item">
+      <div class="dep-left">
+        <div class="dep-dot"></div>
+        <div class="dep-info">
+          <div class="dep-note">${d.note || 'Depósito'}</div>
+          <div class="dep-date">${new Date(d.deposited_at + 'T12:00:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',year:'numeric'})}</div>
+        </div>
+      </div>
+      <div class="dep-amount">+${fmt(d.amount)}</div>
+    </div>`).join('');
+}
+
+function renderStats() {
+  const count = currentDeposits.length;
+  document.getElementById('stat-count').textContent = count;
+
+  if (count === 0) { document.getElementById('stat-avg').textContent = 'R$ 0'; return; }
+
+  // Group by month
+  const months = {};
+  currentDeposits.forEach(d => {
+    const m = d.deposited_at.substring(0,7);
+    months[m] = (months[m] || 0) + parseFloat(d.amount);
+  });
+  const monthCount = Object.keys(months).length;
+  const total = Object.values(months).reduce((a,b)=>a+b,0);
+  document.getElementById('stat-avg').textContent = fmt(total / monthCount);
+}
+
+function renderChart() {
+  const ctx = document.getElementById('chart-main').getContext('2d');
+  if (chartInstance) chartInstance.destroy();
+
+  if (!currentDeposits.length) {
+    ctx.clearRect(0,0,500,200);
+    return;
+  }
+
+  // Accumulate by month
+  const months = {};
+  let running = 0;
+  currentDeposits.forEach(d => {
+    const m = d.deposited_at.substring(0,7);
+    if (!months[m]) months[m] = 0;
+    months[m] += parseFloat(d.amount);
+  });
+
+  const labels = [];
+  const data = [];
+  Object.keys(months).sort().forEach(m => {
+    running += months[m];
+    const [y, mo] = m.split('-');
+    labels.push(new Date(parseInt(y), parseInt(mo)-1).toLocaleDateString('pt-BR',{month:'short', year:'2-digit'}));
+    data.push(running);
+  });
+
+  const color = currentGoal.color;
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        data,
+        borderColor: color,
+        backgroundColor: color + '18',
+        borderWidth: 2,
+        pointBackgroundColor: color,
+        pointRadius: 4,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#5a5a72', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.04)' } },
+        y: {
+          ticks: { color: '#5a5a72', font: { size: 10 }, callback: v => 'R$' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v) },
+          grid: { color: 'rgba(255,255,255,0.04)' }
+        }
+      }
+    }
+  });
+}
+
+// ── SIMULATOR ──
+function updateSim() {
+  if (!currentGoal) return;
+  const monthly = parseInt(document.getElementById('sim-monthly').value);
+  document.getElementById('sim-val-monthly').textContent = fmt(monthly);
+
+  const cur = parseFloat(currentGoal.current_amount || 0);
+  const tgt = parseFloat(currentGoal.target_amount || 0);
+  const remaining = Math.max(tgt - cur, 0);
+  document.getElementById('sim-val-saved').textContent = fmt(cur);
+
+  if (monthly <= 0 || remaining <= 0) {
+    document.getElementById('sim-result').textContent = remaining <= 0 ? '✅ Meta atingida!' : '—';
+    document.getElementById('sim-date').textContent = '';
+    return;
+  }
+
+  const months = Math.ceil(remaining / monthly);
+  const date = new Date();
+  date.setMonth(date.getMonth() + months);
+  const dateStr = date.toLocaleDateString('pt-BR',{month:'long', year:'numeric'});
+
+  document.getElementById('sim-result').textContent = months <= 1 ? '1 mês' : months + ' meses';
+  document.getElementById('sim-date').textContent = 'Previsão: ' + dateStr;
+}
+
+// ── NEW / EDIT GOAL ──
+function buildEmojiGrid() {
+  document.getElementById('emoji-grid').innerHTML = EMOJIS.map(e =>
+    `<div class="emoji-opt${e===selectedEmoji?' selected':''}" onclick="selectEmoji('${e}')">${e}</div>`
+  ).join('');
+}
+
+function buildColorGrid() {
+  document.getElementById('color-grid').innerHTML = COLORS.map(c =>
+    `<div class="color-opt${c===selectedColor?' selected':''}" style="background:${c}" onclick="selectColor('${c}')"></div>`
+  ).join('');
+}
+
+function selectEmoji(e) {
+  selectedEmoji = e;
+  document.querySelectorAll('.emoji-opt').forEach(el => el.classList.toggle('selected', el.textContent===e));
+}
+
+function selectColor(c) {
+  selectedColor = c;
+  document.querySelectorAll('.color-opt').forEach(el => el.classList.toggle('selected', el.style.background===c || el.style.backgroundColor === hexToRgb(c)));
+  buildColorGrid();
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+function openNewGoal() {
+  editingGoalId = null;
+  selectedEmoji = '🎯'; selectedColor = '#c9a84c';
+  document.getElementById('goal-name').value = '';
+  document.getElementById('goal-target').value = '';
+  document.getElementById('goal-deadline').value = '';
+  document.getElementById('modal-goal-title').textContent = 'Nova Meta';
+  buildEmojiGrid(); buildColorGrid();
+  openModal('modal-goal');
+}
+
+function openEditGoal() {
+  if (!currentGoal) return;
+  editingGoalId = currentGoal.id;
+  selectedEmoji = currentGoal.emoji;
+  selectedColor = currentGoal.color;
+  document.getElementById('goal-name').value = currentGoal.name;
+  document.getElementById('goal-target').value = currentGoal.target_amount;
+  document.getElementById('goal-deadline').value = currentGoal.deadline || '';
+  document.getElementById('modal-goal-title').textContent = 'Editar Meta';
+  buildEmojiGrid(); buildColorGrid();
+  openModal('modal-goal');
+}
+
+async function saveGoal() {
+  const name = document.getElementById('goal-name').value.trim();
+  const target = parseFloat(document.getElementById('goal-target').value);
+  const deadline = document.getElementById('goal-deadline').value || null;
+
+  if (!name || isNaN(target) || target <= 0) { showToast('Preencha nome e valor.'); return; }
+
+  const payload = { name, emoji: selectedEmoji, target_amount: target, color: selectedColor, deadline, user_id: user.id };
+
+  if (editingGoalId) {
+    const { error } = await sb.from('goals').update(payload).eq('id', editingGoalId);
+    if (error) { showToast('Erro ao salvar.'); return; }
+    showToast('Meta atualizada! ✅');
+    if (currentGoal) {
+      Object.assign(currentGoal, payload);
+      openGoalDetail(editingGoalId);
+    }
+  } else {
+    const { error } = await sb.from('goals').insert(payload);
+    if (error) { showToast('Erro ao criar.'); return; }
+    showToast('Meta criada! 🎯');
+  }
+
+  closeModal('modal-goal');
+  loadGoals();
+}
+
+async function confirmDeleteGoal() {
+  if (!currentGoal) return;
+  if (!confirm(`Excluir "${currentGoal.name}"? Todos os depósitos serão perdidos.`)) return;
+  await sb.from('goals').delete().eq('id', currentGoal.id);
+  showToast('Meta excluída.');
+  goBack();
+  loadGoals();
+}
+
+// ── DEPOSITS ──
+function openDeposit() {
+  document.getElementById('dep-amount').value = '';
+  document.getElementById('dep-note').value = '';
+  document.getElementById('dep-date').value = new Date().toISOString().split('T')[0];
+  openModal('modal-deposit');
+}
+
+async function saveDeposit() {
+  const amount = parseFloat(document.getElementById('dep-amount').value);
+  const note = document.getElementById('dep-note').value.trim();
+  const date = document.getElementById('dep-date').value;
+
+  if (isNaN(amount) || amount <= 0) { showToast('Insira um valor válido.'); return; }
+
+  const { error } = await sb.from('deposits').insert({
+    user_id: user.id,
+    goal_id: currentGoal.id,
+    amount, note, deposited_at: date
+  });
+
+  if (error) { showToast('Erro ao salvar.'); return; }
+
+  showToast('Depósito registrado! 💰');
+  closeModal('modal-deposit');
+
+  // Reload
+  const { data } = await sb.from('goals').select('*').eq('id', currentGoal.id).single();
+  if (data) {
+    currentGoal = data;
+    goals = goals.map(g => g.id === data.id ? data : g);
+  }
+  openGoalDetail(currentGoal.id);
+  renderSummary();
+}
+
+// ── TABS ──
+function switchTab(btn, name) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  const el = document.getElementById('tab-' + name);
+  if (el) el.classList.add('active');
+  if (name === 'simulate') updateSim();
+}
+
+function showMainTab(btn, name) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  // For now just show/hide sim panel inline — could expand
+}
+
+// ── MODALS ──
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+// ── TOAST ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// ── UTILS ──
+function fmt(v) {
+  return 'R$ ' + parseFloat(v || 0).toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+init();
+</script>
+</body>
+</html>
